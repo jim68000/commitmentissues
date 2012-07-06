@@ -52,7 +52,7 @@
 						}
 					});
 					
-					var jshint = require('child_process').spawn('jshint', ['/Users/jimsmith/hooktest/test.js']);
+					var jshint = require('child_process').spawn('jshint', [targ]);
 					jshint.stdout.setEncoding('UTF-8');
 					jshint.stdout.on("data", function(chunk) {
 						console.log(chunk);
