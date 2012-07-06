@@ -1,0 +1,79 @@
+#!/usr/bin/env node
+
+(function() {
+	
+	
+	var eol = require('os').EOL;
+	var fs = require('fs');
+	var diff = require('child_process').spawn('git', ['diff', '--cached',  '--name-only']);
+	var filez = [];
+	var errst = "";
+	var errno = 0;
+	
+	diff.stdout.setEncoding('UTF-8');
+	diff.stderr.setEncoding('UTF-8');	
+
+	diff.stdout.on("data", function(data) {
+		var temps = data.split(eol);
+		filez = filez.concat(temps);
+	});
+	diff.stderr.on("data", function(o) {
+		console.log(o);
+	});
+	
+	diff.on("exit", function() {
+		filez.forEach(function(it) {
+			
+			if (it.indexOf(".js") == it.length-3) {
+				var targ = process.cwd() + "/"+ it;
+			
+				if (!fs.statSync(targ).isDirectory()) {
+					var moi = fs.readFileSync(process.cwd() + "/"+ it, 'UTF-8');
+					moi.split(eol).forEach(function(line, num) {
+
+						// trim out comments
+						var testline = line;
+						if (testline.lastIndexOf("://") > -1) {
+							if (testline.lastIndexOf("//") > -1 && testline.lastIndexOf("://") != testline.lastIndexOf("//")-1) {
+								testline = testline.substr(0, testline.lastIndexOf("//"));						
+							}						
+						} else if (testline.lastIndexOf("//") > -1) {
+							testline = testline.substr(0, testline.lastIndexOf("//"));	
+						}
+						if (testline.indexOf("mymachine") > -1) {
+							errst += "mymachine on line " + (num+1) + eol;
+							errst += it + " > " + line + eol;
+							errno += 1;
+						}
+						if (testline.match(/console/)) {
+							errst += "Console on line " + (num+1) + eol;
+							errst += it + " > " + line + eol;
+							errno += 1;
+						}
+					});
+					
+					var jshint = require('child_process').spawn('jshint', ['/Users/jimsmith/hooktest/test.js']);
+					jshint.stdout.setEncoding('UTF-8');
+					jshint.stdout.on("data", function(chunk) {
+						console.log(chunk);
+					});
+					jshint.stderr.setEncoding('UTF-8');
+					jshint.stderr.on("data", function(o) {
+						console.log(o);
+					});
+					jshint.on('exit', function(h) {
+						if (errno > 0) {
+							console.log("commit failed in preflight:");
+							console.log(errst);
+						}
+						process.exit(errno);
+					});						
+
+
+				}				
+			} 
+		});
+
+	});
+
+}).call(this);
